@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Chronos & Emerald — The Conversion Surface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* * ANTI-DULL PALETTE 
+         * Midnight void, oxidized copper, ivory parchment, and hyper-cyan.
+         * Breaking the black/grey/green standard.
+         */
+        :root {
+            --bg-void: #030408;
+            --bg-abyss: #0a0d1a;
+            --copper: #d48a6a;
+            --copper-dim: #8b5b46;
+            --hyper-cyan: #00f0ff;
+            --text-ivory: #f2efe9;
+            --text-stone: #9e9a93;
+            
+            --glass-base: rgba(212, 138, 106, 0.03);
+            --glass-edge: rgba(0, 240, 255, 0.15);
+            --glass-sheen: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Scope custom cursor hiding to mouse-driven environments */
+        @media (hover: hover) and (pointer: fine) {
+            * {
+                cursor: none;
+            }
+        }
+
+        body {
+            background-color: var(--bg-void);
+            color: var(--text-ivory);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+            overscroll-behavior-x: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
+            background-image: radial-gradient(circle at 50% 0%, var(--bg-abyss) 0%, var(--bg-void) 100%);
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* * TACTILE CURSOR
+         * Sharp, high-contrast, reacts to copper and cyan targets.
+         */
+        .cursor-dot {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 4px;
+            background-color: var(--hyper-cyan);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            box-shadow: 0 0 10px var(--hyper-cyan);
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s;
+        }
+        
+        .cursor-ring {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--copper);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), height 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s, transform 0.1s;
+        }
+
+        .hover-active .cursor-ring {
+            width: 70px;
+            height: 70px;
+            border-color: var(--hyper-cyan);
+            background: rgba(0, 240, 255, 0.05);
+            mix-blend-mode: screen;
+        }
+
+        /* Hide custom cursor elements completely on touch devices */
+        @media (hover: none), (pointer: coarse) {
+            .cursor-dot, .cursor-ring {
+                display: none !important;
+            }
+        }
+
+        /* * ASYMMETRICAL SELLING LAYOUT 
+         */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            min-height: 100vh;
+        }
+
+        @media (min-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 45vw 55vw;
+            }
+        }
+
+        /* Fixed Visual Anchor */
+        .crest-container {
+            position: relative;
+            height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-bottom: 1px solid rgba(212, 138, 106, 0.1);
+            touch-action: none; /* Prevents scrolling while interacting with the canvas */
+        }
+
+        @media (min-width: 1024px) {
+            .crest-container {
+                height: 100vh;
+                position: sticky;
+                top: 0;
+                border-bottom: none;
+                border-right: 1px solid rgba(212, 138, 106, 0.1);
+                touch-action: auto;
+            }
+        }
+
+        /* Fluid Content Flow */
+        .content-container {
+            padding: 8vw 6vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1, h2, h3 {
+            font-family: 'STIX Two Text', serif;
+            font-weight: 400;
+            line-height: 1.05;
+            overflow-wrap: break-word;
+        }
+
+        .text-block {
+            opacity: 0;
+            transform: translateY(60px);
+            transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1), transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+            margin-bottom: 25vh;
+            position: relative;
+        }
+
+        .text-block.in-view {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Asymmetrical alignment */
+        @media (min-width: 1024px) {
+            .block-1 { margin-left: 10%; margin-top: 15vh; }
+            .block-2 { margin-left: 35%; }
+            .block-3 { margin-left: -5%; margin-top: 10vh; z-index: 10; padding-left: 5%; border-left: 2px solid var(--hyper-cyan); }
+        }
+
+        .sup-title {
+            color: var(--copper);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sup-title::before {
+            content: '';
+            display: block;
+            width: 30px;
+            height: 1px;
+            background: var(--copper-dim);
+        }
+
+        .display-title {
+            font-size: clamp(3.5rem, 7vw, 7.5rem);
+            margin-bottom: 2.5rem;
+            color: var(--text-ivory);
+            letter-spacing: -0.02em;
+        }
+
+        /* The vertical title trick for structural anomaly */
+        .vertical-strike {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            position: absolute;
+            left: -80px;
+            top: 0;
+            font-size: clamp(2rem, 4vw, 4rem);
+            color: var(--glass-edge);
+            opacity: 0.5;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 1023px) {
+            .vertical-strike { display: none; }
+        }
+
+        .display-title i {
+            color: var(--copper);
+            font-style: italic;
+            display: block;
+            margin-top: -0.2em;
+        }
+
+        .body-text {
+            font-size: clamp(1.1rem, 1.5vw, 1.35rem);
+            line-height: 1.6;
+            color: var(--text-stone);
+            max-width: 440px;
+            overflow-wrap: break-word;
+        }
+
+        .body-text strong {
+            color: var(--hyper-cyan);
+            font-weight: 500;
+        }
+
+        /* * 4D MATH ANIMATION & CREST
+         * Interlocking, rotating astrolabe vault.
+         */
+        .crest-scene {
+            perspective: 1500px;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .crest-anchor {
+            position: relative;
+            width: 500px;
+            height: 500px;
+            transform-style: preserve-3d;
+            transform: rotateX(15deg) rotateY(-15deg);
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #emerald-beam-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+
+        /* Hyper-Lux Glass rings */
+        .prism-stack {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            pointer-events: auto;
+            transform: translate(-50%, -50%);
+        }
+
+        .glass-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            border-radius: 50%;
+            background: var(--glass-base);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--copper-dim);
+            transform-origin: center center;
+            transform-style: preserve-3d;
+        }
+
+        .glass-ring::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: var(--glass-sheen);
+            padding: 2px;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        /* Nested rotational mechanics */
+        .ring-1 {
+            width: 380px; height: 380px;
+            transform: translate(-50%, -50%) translateZ(40px) rotateX(70deg);
+            animation: revolve 24s linear infinite;
+        }
+        .ring-2 {
+            width: 280px; height: 280px;
+            border-color: var(--glass-edge);
+            transform: translate(-50%, -50%) translateZ(80px) rotateY(60deg);
+            animation: revolve-reverse 18s linear infinite;
+        }
+        .ring-3 {
+            width: 140px; height: 140px;
+            background: rgba(0, 240, 255, 0.02);
+            border-color: var(--hyper-cyan);
+            transform: translate(-50%, -50%) translateZ(120px) rotateZ(45deg);
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.1) inset;
+        }
+
+        /* The Core Pivot */
+        .crest-anchor::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 600px;
+            background: linear-gradient(to bottom, transparent, var(--hyper-cyan), transparent);
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px var(--hyper-cyan);
+            opacity: 0.3;
+            transition: opacity 0.6s, box-shadow 0.6s, height 0.6s;
+        }
+
+        .crest-anchor.splash-active::after {
+            opacity: 1;
+            height: 800px;
+            box-shadow: 0 0 40px var(--hyper-cyan), 0 0 80px #fff;
+        }
+
+        @keyframes revolve { 100% { transform: translate(-50%, -50%) translateZ(40px) rotateX(70deg) rotateZ(360deg); } }
+        @keyframes revolve-reverse { 100% { transform: translate(-50%, -50%) translateZ(80px) rotateY(60deg) rotateZ(-360deg); } }
+
+        /* * AUDIO TACTILE CONTROL
+         */
+        .audio-control {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(10, 13, 26, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--copper-dim);
+            padding: 12px 24px;
+            border-radius: 30px;
+            color: var(--text-ivory);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            transition: border-color 0.3s, background 0.3s;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .audio-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--copper-dim);
+            border-radius: 50%;
+            position: relative;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+
+        .audio-control.active {
+            border-color: var(--hyper-cyan);
+        }
+
+        .audio-control.active .audio-dot {
+            background: var(--hyper-cyan);
+            box-shadow: 0 0 8px var(--hyper-cyan);
+        }
+
+        /* * CTA BUTTON 
+         */
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 3rem;
+            padding: 1.2rem 2.5rem;
+            background: transparent;
+            border: 1px solid var(--hyper-cyan);
+            color: var(--hyper-cyan);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+            transition: color 0.4s;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            min-height: 48px; /* Strict mobile tap target adherence */
+        }
+
+        .cta-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: var(--hyper-cyan);
+            transition: left 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: -1;
+        }
+
+        /* Hover isolation for native feel */
+        @media (hover: hover) and (pointer: fine) {
+            .cta-btn:hover {
+                color: var(--bg-void);
+            }
+            .cta-btn:hover::before {
+                left: 0;
+            }
+            .audio-control:hover {
+                border-color: var(--copper);
+                background: rgba(10, 13, 26, 1);
+            }
+        }
+
+        /* Touch-active states for immediate mobile feedback */
+        .cta-btn:active {
+            color: var(--bg-void);
+            transition: color 0.1s;
+        }
+        .cta-btn:active::before {
+            left: 0;
+            transition: left 0.1s;
+        }
+        .audio-control:active {
+            border-color: var(--copper);
+            background: rgba(10, 13, 26, 1);
+            transition: background 0.1s;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 1023px) {
+            .crest-anchor { transform: rotateX(10deg) rotateY(0deg) scale(0.6); }
+            .content-container { padding-bottom: 20vh; }
+            .text-block { margin-bottom: 15vh; }
+            /* Enforce Apple 44pt minimum touch target */
+            .audio-control { 
+                bottom: 24px; 
+                right: 20px; 
+                padding: 12px 20px; 
+                min-width: 44px; 
+                min-height: 44px; 
+            }
+            .ring-1 { animation: none; transform: translate(-50%, -50%) translateZ(20px) rotateX(45deg); }
+            .ring-2 { animation: none; transform: translate(-50%, -50%) translateZ(40px) rotateY(45deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Tactile Cursor -->
+    <div class="cursor-dot" id="cursor-dot"></div>
+    <div class="cursor-ring" id="cursor-ring"></div>
+
+    <main class="main-grid">
+        
+        <!-- Interactive Astrolabe Section -->
+        <section class="crest-container">
+            <canvas id="emerald-beam-canvas"></canvas>
+            
+            <div class="crest-scene">
+                <div class="crest-anchor" id="crest-anchor">
+                    <div class="prism-stack interactive-zone">
+                        <div class="glass-ring ring-1"></div>
+                        <div class="glass-ring ring-2"></div>
+                        <div class="glass-ring ring-3"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Asymmetrical Sales Copy -->
+        <section class="content-container">
+            
+            <div class="text-block block-1">
+                <span class="sup-title">Phase One</span>
+                <h1 class="display-title">Cognitive<br><i>Capture.</i></h1>
+                <p class="body-text">Digital tension directs focus. Guided interaction commands attention, leading the eye exactly where the transaction occurs. Interaction becomes the focal point.</p>
+            </div>
+
+            <div class="text-block block-2">
+                <h2 class="vertical-strike">Psychology</h2>
+                <span class="sup-title">Phase Two</span>
+                <h2 class="display-title">Physical<br><i>Weight.</i></h2>
+                <p class="body-text">Heavy typography. High contrast. The interface responds to intent. Interactive elements shift the layout to establish tangible value.</p>
+            </div>
+
+            <div class="text-block block-3">
+                <span class="sup-title">Phase Three</span>
+                <h2 class="display-title">Final<br><i>Step.</i></h2>
+                <p class="body-text">The mechanics beneath the surface convert curiosity into capital. The aesthetic drives the outcome. Reach out to begin.</p>
+                
+                <button class="cta-btn interactive-zone">Engage Surface</button>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Audio Controls -->
+    <button class="audio-control interactive-zone" id="audio-toggle">
+        <div class="audio-dot"></div>
+        <span id="audio-label">Enable Sound</span>
+    </button>
+
+    <script>
+        /**
+         * CHRONOS & EMERALD v2.0 - Conversion Surface
+         * Upgraded Physics, Advanced Web Audio FM Synthesis, and Plexus Canvas.
+         */
+
+        // --- 1. Custom Cursor & Fluid Interpolation ---
+        const cursorDot = document.getElementById('cursor-dot');
+        const cursorRing = document.getElementById('cursor-ring');
+        const interactiveZones = document.querySelectorAll('.interactive-zone');
+        
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let ringX = window.innerWidth / 2;
+        let ringY = window.innerHeight / 2;
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            cursorDot.style.left = `${mouseX}px`;
+            cursorDot.style.top = `${mouseY}px`;
+        });
+
+        const renderCursor = () => {
+            ringX += (mouseX - ringX) * 0.2;
+            ringY += (mouseY - ringY) * 0.2;
+            
+            cursorRing.style.left = `${ringX}px`;
+            cursorRing.style.top = `${ringY}px`;
+            
+            requestAnimationFrame(renderCursor);
+        };
+        renderCursor();
+
+        interactiveZones.forEach(zone => {
+            zone.addEventListener('mouseenter', () => document.body.classList.add('hover-active'));
+            zone.addEventListener('mouseleave', () => document.body.classList.remove('hover-active'));
+        });
+
+        // --- 2. Scroll Observer ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('in-view');
+                }
+            });
+        }, { threshold: 0.15 });
+
+        document.querySelectorAll('.text-block').forEach(block => observer.observe(block));
+
+        // --- 3. 3D Astrolabe Parallax ---
+        const crestAnchor = document.getElementById('crest-anchor');
+        const crestContainer = document.querySelector('.crest-container');
+        
+        let destRotateX = 15;
+        let destRotateY = -15;
+        let currentRotateX = 15;
+        let currentRotateY = -15;
+
+        crestContainer.addEventListener('mousemove', (e) => {
+            const rect = crestContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const deltaX = (x - centerX) / centerX;
+            const deltaY = (y - centerY) / centerY;
+
+            destRotateX = 15 - (deltaY * 25); 
+            destRotateY = -15 + (deltaX * 25);
+        });
+
+        crestContainer.addEventListener('mouseleave', () => {
+            destRotateX = 15;
+            destRotateY = -15;
+        });
+
+        const updateParallax = () => {
+            currentRotateX += (destRotateX - currentRotateX) * 0.08;
+            currentRotateY += (destRotateY - currentRotateY) * 0.08;
+            
+            crestAnchor.style.transform = `rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg)`;
+            requestAnimationFrame(updateParallax);
+        };
+        // Preserving original desktop-only animation constraint
+        if (window.innerWidth >= 1024) updateParallax();
+
+        // --- 4. Advanced Audio Synthesis ---
+        let audioCtx;
+        let masterGain;
+        let droneOscillators = [];
+        let lfo;
+        let isAudioEnabled = false;
+
+        const audioToggle = document.getElementById('audio-toggle');
+        const audioLabel = document.getElementById('audio-label');
+
+        const initAudio = () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioCtx.createGain();
+                masterGain.connect(audioCtx.destination);
+            }
+
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            if (droneOscillators.length === 0) {
+                const freqs = [55, 82.5, 110]; // A1, E2, A2
+                
+                lfo = audioCtx.createOscillator();
+                lfo.type = 'sine';
+                lfo.frequency.value = 0.05;
+                
+                freqs.forEach(freq => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    
+                    gain.gain.value = 0;
+                    
+                    const lfoGain = audioCtx.createGain();
+                    lfoGain.gain.value = 0.03; 
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(gain.gain);
+                    
+                    gain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 3);
+                    
+                    osc.connect(gain);
+                    gain.connect(masterGain);
+                    
+                    osc.start();
+                    droneOscillators.push({ osc, gain });
+                });
+                
+                lfo.start();
+            }
+        };
+
+        const playGlassChime = () => {
+            if (!isAudioEnabled || !audioCtx) return;
+            
+            const carrier = audioCtx.createOscillator();
+            const modulator = audioCtx.createOscillator();
+            const modGain = audioCtx.createGain();
+            const envelope = audioCtx.createGain();
+            
+            carrier.type = 'sine';
+            carrier.frequency.setValueAtTime(880, audioCtx.currentTime);
+            
+            modulator.type = 'triangle';
+            modulator.frequency.setValueAtTime(880 * 1.414, audioCtx.currentTime); 
+            
+            modGain.gain.setValueAtTime(1000, audioCtx.currentTime);
+            modGain.gain.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+            
+            modulator.connect(modGain);
+            modGain.connect(carrier.frequency);
+            
+            envelope.gain.setValueAtTime(0, audioCtx.currentTime);
+            envelope.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.02);
+            envelope.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+            
+            carrier.connect(envelope);
+            envelope.connect(masterGain);
+            
+            modulator.start();
+            carrier.start();
+            
+            modulator.stop(audioCtx.currentTime + 1.5);
+            carrier.stop(audioCtx.currentTime + 1.5);
+        };
+
+        audioToggle.addEventListener('click', () => {
+            isAudioEnabled = !isAudioEnabled;
+            
+            if (isAudioEnabled) {
+                initAudio();
+                audioToggle.classList.add('active');
+                audioLabel.textContent = 'Audio Running';
+            } else {
+                if (droneOscillators.length > 0) {
+                    droneOscillators.forEach(node => {
+                        node.gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1);
+                        setTimeout(() => {
+                            node.osc.stop();
+                            node.osc.disconnect();
+                        }, 1000);
+                    });
+                    if(lfo) { lfo.stop(); lfo.disconnect(); }
+                    droneOscillators = [];
+                }
+                audioToggle.classList.remove('active');
+                audioLabel.textContent = 'Enable Sound';
+            }
+        });
+
+        // --- 5. Canvas Plexus Engine ---
+        const canvas = document.getElementById('emerald-beam-canvas');
+        const ctx = canvas.getContext('2d', { alpha: true });
+        
+        let width, height, centerX, centerY;
+        
+        const resizeCanvas = () => {
+            const rect = crestContainer.getBoundingClientRect();
+            width = canvas.width = rect.width;
+            height = canvas.height = rect.height;
+            centerX = width / 2;
+            centerY = height / 2;
+        };
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Node {
+            constructor() {
+                this.x = centerX + (Math.random() - 0.5) * 400;
+                this.y = centerY + (Math.random() - 0.5) * 400;
+                this.baseX = this.x;
+                this.baseY = this.y;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2;
+            }
+
+            update(mousePt, isHovering) {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (Math.abs(this.x - this.baseX) > 100) this.vx *= -1;
+                if (Math.abs(this.y - this.baseY) > 100) this.vy *= -1;
+
+                if (isHovering && mousePt.x !== centerX && mousePt.y !== centerY) {
+                    const dx = mousePt.x - this.x;
+                    const dy = mousePt.y - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 150) {
+                        const force = (150 - dist) / 150;
+                        this.x -= (dx / dist) * force * 2;
+                        this.y -= (dy / dist) * force * 2;
+                    }
+                } else {
+                    this.x += (this.baseX - this.x) * 0.01;
+                    this.y += (this.baseY - this.y) * 0.01;
+                }
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(212, 138, 106, 0.5)';
+                ctx.fill();
+            }
+        }
+
+        const nodes = Array.from({ length: 45 }, () => new Node());
+        let isSplashing = false;
+        let localMouseX = centerX;
+        let localMouseY = centerY;
+
+        const prismStack = document.querySelector('.prism-stack');
+
+        // Pointer event mapping for uniform touch and mouse response
+        const handlePointerMove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Fallback for touches array vs standard client coordinates
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            localMouseX = clientX - rect.left;
+            localMouseY = clientY - rect.top;
+        };
+
+        crestContainer.addEventListener('mousemove', handlePointerMove, { passive: true });
+        crestContainer.addEventListener('touchmove', handlePointerMove, { passive: true });
+
+        prismStack.addEventListener('mouseenter', () => {
+            isSplashing = true;
+            crestAnchor.classList.add('splash-active');
+            playGlassChime();
+        });
+
+        prismStack.addEventListener('mouseleave', () => {
+            isSplashing = false;
+            crestAnchor.classList.remove('splash-active');
+        });
+
+        prismStack.addEventListener('touchstart', () => {
+            isSplashing = true;
+            crestAnchor.classList.add('splash-active');
+            playGlassChime();
+        }, { passive: true });
+
+        prismStack.addEventListener('touchend', () => {
+            isSplashing = false;
+            crestAnchor.classList.remove('splash-active');
+        }, { passive: true });
+
+        const renderCanvas = () => {
+            ctx.clearRect(0, 0, width, height);
+
+            const mousePt = { x: localMouseX, y: localMouseY };
+
+            nodes.forEach(node => {
+                node.update(mousePt, isSplashing);
+                node.draw(ctx);
+            });
+
+            ctx.lineWidth = 1;
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+
+                    if (dist < 120) {
+                        const opacity = (1 - dist/120) * (isSplashing ? 0.6 : 0.15);
+                        ctx.beginPath();
+                        ctx.moveTo(nodes[i].x, nodes[i].y);
+                        ctx.lineTo(nodes[j].x, nodes[j].y);
+                        ctx.strokeStyle = isSplashing 
+                            ? `rgba(0, 240, 255, ${opacity})`
+                            : `rgba(212, 138, 106, ${opacity})`;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            requestAnimationFrame(renderCanvas);
+        };
+        renderCanvas();
+
+        const ctaBtn = document.querySelector('.cta-btn');
+        ctaBtn.addEventListener('mouseenter', playGlassChime);
+        ctaBtn.addEventListener('touchstart', playGlassChime, { passive: true });
+
+    </script>
+</body>
+</html>
